@@ -2,6 +2,10 @@
 
 노션/구글시트/넘버스가 복잡하게 느껴지는 사람들을 위한, 한 손가락 탭으로 끝나는 가계부 앱.
 
+- **배포 주소:** https://moneylog11.netlify.app/
+- **저장소:** https://github.com/dohye1917-spec/moneylog
+- Netlify가 `main` 브랜치에 `git push`할 때마다 자동으로 재배포합니다 (`netlify.toml` 설정 기준).
+
 ## 기술 스택
 
 - React 18 + Vite + Tailwind CSS
@@ -22,7 +26,8 @@ npm run dev
    - "프로젝트 지원 이메일"을 지정해야 활성화할 수 있습니다.
    - 이 앱은 `signInWithPopup`으로 구글 로그인 후 `user.uid`로 유저를 구분합니다.
 3. **Authentication → Settings → 승인된 도메인(Authorized domains)** 에 개발 중인 도메인이 있는지 확인
-   - `localhost`는 기본 포함되어 있어 로컬 개발은 바로 됩니다. 실제 배포 도메인은 배포 후 추가하세요.
+   - `localhost`는 기본 포함되어 있어 로컬 개발은 바로 됩니다.
+   - 배포 도메인 `moneylog11.netlify.app`도 반드시 추가해야 배포된 사이트에서 구글 로그인이 동작합니다.
 4. **Firestore Database** 생성 (아직 없다면 프로덕션 모드로 생성)
 5. **Firestore Database → 규칙** 탭에 이 저장소의 [`firestore.rules`](firestore.rules) 내용을 붙여넣고 배포
    - 규칙을 배포하지 않으면 기본값(모두 거부)이라 앱에서 읽기/쓰기가 모두 실패합니다.
