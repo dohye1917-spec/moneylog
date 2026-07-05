@@ -1,0 +1,45 @@
+rules_version = '2';
+
+// Firebase 콘솔 > Firestore Database > 규칙 탭에 붙여넣어 배포하세요.
+// (이 파일 자체는 배포되지 않는 참고용 파일입니다.)
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function myShareId() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.shareId;
+    }
+
+    // users: 본인 문서만 쓰기 가능, 공유 코드 확인을 위해 읽기는 로그인 유저 모두 허용
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == uid;
+      allow update: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // transactions / categories / recurringPayments:
+    // 나와 shareId(공유 가계부 ID)가 같은 문서만 읽고 쓸 수 있음
+    match /transactions/{id} {
+      allow read: if isSignedIn() && resource.data.shareId == myShareId();
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.shareId == myShareId();
+      allow update, delete: if isSignedIn() && resource.data.shareId == myShareId();
+    }
+
+    match /categories/{id} {
+      allow read: if isSignedIn() && resource.data.shareId == myShareId();
+      allow create: if isSignedIn() && request.resource.data.shareId == myShareId();
+      allow update, delete: if isSignedIn() && resource.data.shareId == myShareId();
+    }
+
+    match /recurringPayments/{id} {
+      allow read: if isSignedIn() && resource.data.shareId == myShareId();
+      allow create: if isSignedIn() && request.resource.data.shareId == myShareId();
+      allow update, delete: if isSignedIn() && resource.data.shareId == myShareId();
+    }
+  }
+}

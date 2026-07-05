@@ -1,0 +1,9 @@
+{
+  "appId": "com.moneylog.app",
+  "appName": "머니로그",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  }
+}
