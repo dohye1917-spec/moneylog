@@ -2,6 +2,7 @@ import { initializeApp } from "firebase/app";
 import { isSupported, getAnalytics } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCYQjfz_vGm1GgeApp-1s1OiShoTEaRPxM",
@@ -17,6 +18,7 @@ export const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+export const storage = getStorage(app);
 
 // Analytics는 브라우저 환경(웹)에서만 지원되고 앱(Capacitor 웹뷰)에서는
 // 지원되지 않을 수 있으므로 isSupported()로 확인 후 초기화한다.

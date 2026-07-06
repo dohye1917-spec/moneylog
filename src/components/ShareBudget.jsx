@@ -91,12 +91,12 @@ export default function ShareBudget({ user, profile }) {
               value={code}
               onChange={(e) => setCode(e.target.value)}
               placeholder="상대방 공유 코드 입력"
-              className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+              className="flex-1 min-w-0 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
             />
             <button
               onClick={handleJoin}
               disabled={busy}
-              className="rounded-xl bg-slate-900 text-white text-sm font-semibold px-4 hover:bg-slate-800 disabled:opacity-50"
+              className="shrink-0 rounded-xl bg-slate-900 text-white text-sm font-semibold px-4 hover:bg-slate-800 disabled:opacity-50"
             >
               연동
             </button>

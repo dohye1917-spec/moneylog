@@ -50,18 +50,26 @@ export async function deleteTransaction(id) {
  * shareId를 공유하는 유저들 간에 지출 내역이 실시간으로 동기화되도록
  * onSnapshot 기반 구독을 걸고, 변경될 때마다 callback(list)을 호출한다.
  * 반환값은 구독 해제 함수(unsubscribe)이다.
+ *
+ * onError를 넘기지 않으면 실패(예: shareId+date 복합 인덱스 미생성,
+ * 규칙 미배포)가 콘솔에만 찍히고 화면엔 아무 표시 없이 목록이 비어있는
+ * 것처럼 보이므로, 반드시 상위(App.jsx)에서 에러를 화면에 노출해야 한다.
  */
-export function getRealtimeTransactions(shareId, callback) {
+export function getRealtimeTransactions(shareId, callback, onError) {
   const q = query(
     collection(db, "transactions"),
     where("shareId", "==", shareId),
     orderBy("date", "desc")
   );
 
-  return onSnapshot(q, (snapshot) => {
-    const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-    callback(list);
-  });
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      callback(list);
+    },
+    onError
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -83,12 +91,16 @@ export async function deleteCustomCategory(id) {
   await deleteDoc(doc(db, "categories", id));
 }
 
-export function getRealtimeCategories(shareId, callback) {
+export function getRealtimeCategories(shareId, callback, onError) {
   const q = query(collection(db, "categories"), where("shareId", "==", shareId));
-  return onSnapshot(q, (snapshot) => {
-    const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-    callback(list);
-  });
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      callback(list);
+    },
+    onError
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -118,12 +130,16 @@ export async function deleteRecurringPayment(id) {
   await deleteDoc(doc(db, "recurringPayments", id));
 }
 
-export function getRealtimeRecurringPayments(shareId, callback) {
+export function getRealtimeRecurringPayments(shareId, callback, onError) {
   const q = query(collection(db, "recurringPayments"), where("shareId", "==", shareId));
-  return onSnapshot(q, (snapshot) => {
-    const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-    callback(list);
-  });
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      callback(list);
+    },
+    onError
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -151,12 +167,16 @@ export async function deleteInstallment(id) {
   await deleteDoc(doc(db, "installments", id));
 }
 
-export function getRealtimeInstallments(shareId, callback) {
+export function getRealtimeInstallments(shareId, callback, onError) {
   const q = query(collection(db, "installments"), where("shareId", "==", shareId));
-  return onSnapshot(q, (snapshot) => {
-    const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-    callback(list);
-  });
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      callback(list);
+    },
+    onError
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -191,7 +211,9 @@ export function getRealtimeBudget(shareId, callback) {
 
 /**
  * 구글 로그인 성공 후 최초 1회 users/{uid} 문서를 만든다.
- * 이미 있는 유저라면 구글 프로필(이름/사진)이 바뀐 경우에만 갱신한다.
+ * 이미 있는 유저라면 손대지 않는다 — displayName/photoURL은 유저가 설정 화면에서
+ * 직접 바꿀 수 있는 값이라, 로그인할 때마다 구글 프로필로 되돌리면 그 커스터마이징이
+ * 계속 사라져버린다 (email만 구글 쪽이 유일한 출처이므로 계속 동기화한다).
  */
 export async function ensureUserProfile(uid, googleProfile = {}) {
   const ref = doc(db, "users", uid);
@@ -213,14 +235,18 @@ export async function ensureUserProfile(uid, googleProfile = {}) {
   }
 
   const existing = snap.data();
-  const updates = {};
-  if (displayName && displayName !== existing.displayName) updates.displayName = displayName;
-  if (photoURL && photoURL !== existing.photoURL) updates.photoURL = photoURL;
-  if (Object.keys(updates).length > 0) {
-    await updateDoc(ref, updates);
-    return { ...existing, ...updates };
+  if (email && email !== existing.email) {
+    await updateDoc(ref, { email });
+    return { ...existing, email };
   }
   return existing;
+}
+
+/**
+ * 설정 화면에서 유저가 직접 이름/프로필 사진을 바꿀 때 쓴다.
+ */
+export async function updateUserProfile(uid, data) {
+  await updateDoc(doc(db, "users", uid), data);
 }
 
 export function getRealtimeUserProfile(uid, callback) {

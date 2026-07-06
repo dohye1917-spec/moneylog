@@ -102,32 +102,32 @@ export default function RecurringPayments({ shareId }) {
         >
           <Plus className="w-4 h-4" /> 등록하기
         </button>
-      </section>
 
-      <section className="space-y-2">
-        {items.map((i) => (
-          <div
-            key={i.id}
-            className="flex items-center justify-between bg-white rounded-2xl border border-slate-200 px-4 py-3"
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">{i.emoji}</span>
-              <div>
-                <p className="text-sm font-semibold text-slate-700">{i.name}</p>
-                <p className="text-xs text-slate-400">매월 {i.dayOfMonth}일 · {Number(i.amount).toLocaleString("ko-KR")}원</p>
-              </div>
-            </div>
-            <button
-              onClick={() => deleteRecurringPayment(i.id)}
-              className="text-slate-300 hover:text-red-400"
+        <div className="space-y-2 pt-1">
+          {items.map((i) => (
+            <div
+              key={i.id}
+              className="flex items-center justify-between bg-white rounded-2xl border border-slate-200 px-4 py-3"
             >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-        ))}
-        {items.length === 0 && (
-          <p className="text-center text-sm text-slate-400 py-6">등록된 정기 결제가 없어요.</p>
-        )}
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{i.emoji}</span>
+                <div>
+                  <p className="text-sm font-semibold text-slate-700">{i.name}</p>
+                  <p className="text-xs text-slate-400">매월 {i.dayOfMonth}일 · {Number(i.amount).toLocaleString("ko-KR")}원</p>
+                </div>
+              </div>
+              <button
+                onClick={() => deleteRecurringPayment(i.id)}
+                className="text-slate-300 hover:text-red-400"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+          {items.length === 0 && (
+            <p className="text-center text-sm text-slate-400 py-6">등록된 정기 결제가 없어요.</p>
+          )}
+        </div>
       </section>
 
       <InstallmentSection userId={shareId} shareId={shareId} />

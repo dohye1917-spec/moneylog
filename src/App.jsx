@@ -39,6 +39,15 @@ function describeFatalError(error) {
       </>
     );
   }
+  if (error.code === "failed-precondition") {
+    return (
+      <>
+        <b>Firestore 복합 인덱스가 아직 만들어지지 않았어요.</b> 아래 에러 메시지 안에 있는{" "}
+        <b>"색인을 만드세요" 링크(https://console.firebase.google.com/... 로 시작)</b>를 눌러 인덱스를 생성하고,
+        몇 분 뒤 새로고침해주세요.
+      </>
+    );
+  }
   return (
     <>
       Firebase 콘솔에서 <b>Authentication → Sign-in method → Google</b>을 활성화하고,
@@ -56,30 +65,34 @@ export default function App() {
   const [customCategories, setCustomCategories] = useState([]);
   const [recurringItems, setRecurringItems] = useState([]);
   const [installments, setInstallments] = useState([]);
+  // 실시간 구독 실패(권한 오류, 복합 인덱스 미생성 등)는 onSnapshot이 콘솔에만
+  // 로그를 남기고 화면엔 아무 표시가 없어 "저장은 되는데 목록엔 안 뜬다"처럼
+  // 보이므로, 실제 에러를 잡아 화면에 노출한다.
+  const [dataError, setDataError] = useState(null);
 
   const shareId = profile?.shareId || user?.uid;
 
   useEffect(() => {
     if (!shareId) return;
-    const unsub = getRealtimeTransactions(shareId, setTransactions);
+    const unsub = getRealtimeTransactions(shareId, setTransactions, setDataError);
     return () => unsub();
   }, [shareId]);
 
   useEffect(() => {
     if (!shareId) return;
-    const unsub = getRealtimeCategories(shareId, setCustomCategories);
+    const unsub = getRealtimeCategories(shareId, setCustomCategories, setDataError);
     return () => unsub();
   }, [shareId]);
 
   useEffect(() => {
     if (!shareId) return;
-    const unsub = getRealtimeRecurringPayments(shareId, setRecurringItems);
+    const unsub = getRealtimeRecurringPayments(shareId, setRecurringItems, setDataError);
     return () => unsub();
   }, [shareId]);
 
   useEffect(() => {
     if (!shareId) return;
-    const unsub = getRealtimeInstallments(shareId, setInstallments);
+    const unsub = getRealtimeInstallments(shareId, setInstallments, setDataError);
     return () => unsub();
   }, [shareId]);
 
@@ -119,14 +132,15 @@ export default function App() {
     })();
   }, [shareId, recurringItems]);
 
-  if (error) {
+  const fatalError = error || dataError;
+  if (fatalError) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FFF6F0] px-6">
         <div className="max-w-sm text-center space-y-3">
           <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto" />
           <p className="text-sm font-semibold text-slate-700">Firebase 연결에 문제가 있어요</p>
-          <p className="text-xs text-slate-500 leading-relaxed">{describeFatalError(error)}</p>
-          <p className="text-[11px] text-slate-400 font-mono break-all">{error.message}</p>
+          <p className="text-xs text-slate-500 leading-relaxed">{describeFatalError(fatalError)}</p>
+          <p className="text-[11px] text-slate-400 font-mono break-all">{fatalError.message}</p>
         </div>
       </div>
     );

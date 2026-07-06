@@ -1,27 +1,102 @@
-import { Crown, LogOut, Sparkles } from "lucide-react";
-import { setPremium } from "../lib/firestore";
+import { useEffect, useRef, useState } from "react";
+import { Crown, LogOut, Sparkles, Camera, Check } from "lucide-react";
+import { setPremium, updateUserProfile } from "../lib/firestore";
+import { uploadProfilePhoto } from "../lib/storage";
 
 export default function SettingsScreen({ user, profile, onSignOut }) {
   const isPremium = !!profile?.isPremium;
+  const fileInputRef = useRef(null);
+  const [name, setName] = useState(profile?.displayName || "");
+  const [uploading, setUploading] = useState(false);
+  const [toast, setToast] = useState("");
+
+  useEffect(() => {
+    setName(profile?.displayName || "");
+  }, [profile?.displayName]);
+
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(""), 1800);
+  };
+
+  const handleNameSave = async () => {
+    if (!name.trim() || name.trim() === profile?.displayName) return;
+    await updateUserProfile(user.uid, { displayName: name.trim() });
+    showToast("이름을 변경했어요!");
+  };
+
+  const handlePhotoClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handlePhotoChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const url = await uploadProfilePhoto(user.uid, file);
+      await updateUserProfile(user.uid, { photoURL: url });
+      showToast("프로필 사진을 변경했어요!");
+    } catch (err) {
+      console.error("프로필 사진 업로드 실패:", err);
+      showToast("사진 업로드에 실패했어요. 다시 시도해줘.");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <div className="space-y-5">
-      <section className="bg-white rounded-2xl border border-slate-200 p-5 flex items-center gap-3">
-        <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-200 shrink-0">
-          {profile?.photoURL && (
-            <img src={profile.photoURL} alt={profile.displayName || "프로필"} className="w-full h-full object-cover" />
-          )}
+      <section className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handlePhotoClick}
+            disabled={uploading}
+            className="relative w-14 h-14 rounded-full overflow-hidden bg-slate-200 shrink-0"
+          >
+            {profile?.photoURL && (
+              <img src={profile.photoURL} alt={profile.displayName || "프로필"} className="w-full h-full object-cover" />
+            )}
+            <span className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity">
+              <Camera className="w-5 h-5 text-white" />
+            </span>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handlePhotoChange}
+            className="hidden"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-slate-400 truncate">{profile?.email}</p>
+            {uploading && <p className="text-xs text-slate-400">사진 업로드 중...</p>}
+          </div>
+          <button
+            onClick={onSignOut}
+            className="shrink-0 flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50"
+          >
+            <LogOut className="w-3.5 h-3.5" /> 로그아웃
+          </button>
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-slate-800 truncate">{profile?.displayName || "이름 없음"}</p>
-          <p className="text-xs text-slate-400 truncate">{profile?.email}</p>
+
+        <div className="flex items-center gap-2">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="이름"
+            className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+          />
+          <button
+            onClick={handleNameSave}
+            disabled={!name.trim() || name.trim() === profile?.displayName}
+            className="shrink-0 rounded-xl bg-slate-900 text-white p-2.5 disabled:opacity-30 hover:bg-slate-800"
+          >
+            <Check className="w-4 h-4" />
+          </button>
         </div>
-        <button
-          onClick={onSignOut}
-          className="shrink-0 flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-50"
-        >
-          <LogOut className="w-3.5 h-3.5" /> 로그아웃
-        </button>
       </section>
 
       <section className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3">
@@ -61,6 +136,12 @@ export default function SettingsScreen({ user, profile, onSignOut }) {
         <p className="text-xs text-slate-400">사용자 ID</p>
         <p className="text-xs font-mono text-slate-600 break-all">{user?.uid}</p>
       </section>
+
+      {toast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-sm px-4 py-2 rounded-full shadow-lg z-50 whitespace-nowrap">
+          {toast}
+        </div>
+      )}
     </div>
   );
 }

@@ -9,7 +9,7 @@
 ## 기술 스택
 
 - React 18 + Vite + Tailwind CSS
-- Firebase (Firestore + Google Authentication)
+- Firebase (Firestore + Google Authentication + Storage)
 - Recharts (통계 대시보드 파이차트/막대차트)
 - Capacitor (Android/iOS 패키징용)
 
@@ -35,6 +35,10 @@ npm run dev
    - `installments`, `budgets` 컬렉션 규칙이 추가됐으니, 카드 할부·예산 기능을 쓰려면 규칙을 다시 배포해야 합니다(이미 배포했었어도 최신 내용으로 갱신 필요).
 6. 최초 실행 시 `getRealtimeTransactions`가 `shareId` + `date` 복합 인덱스를 요구할 수 있습니다.
    콘솔에 뜨는 "색인을 만드세요" 링크를 클릭해 인덱스를 생성해주세요.
+7. **Storage** (프로필 사진 업로드용)
+   - 왼쪽 메뉴 **Storage** → 아직 시작 안 했다면 "시작하기"로 기본 버킷 생성
+   - **Storage → 규칙** 탭에 이 저장소의 [`storage.rules`](storage.rules) 내용을 붙여넣고 배포
+   - 배포하지 않으면 설정 화면에서 프로필 사진 변경 시 업로드가 실패합니다 (이름 변경은 Firestore만 쓰므로 이 단계와 무관하게 동작).
 
 > **모바일(Capacitor) 참고:** `signInWithPopup`은 일반 웹 브라우저에서만 동작합니다.
 > Capacitor로 패키징한 네이티브 앱(WebView)에서는 팝업이 열리지 않으므로,
@@ -59,7 +63,7 @@ npm run dev
 - **홈**: 금액 입력(NumberPad) → 카테고리 버튼 한 번 탭 → 즉시 저장 (별도 저장 버튼 없음)
 - **정기결제**: 구독/보험료 등록, D-3 이내 결제 예정 항목 배너 알림 (스텁: 실제 푸시알림 미연동)
 - **공유가계부**: 내 공유 코드(uid) 안내, 상대방 코드 입력 시 `shareId` 동기화
-- **설정**: 구글 프로필(이름/사진) 표시, 로그아웃, 프리미엄 상태 확인 + 테스트용 토글(실 결제 SDK 연동 전 임시)
+- **설정**: 프로필 사진/이름 직접 변경(Firebase Storage 업로드), 계정 정보(사용자 ID), 로그아웃, 프리미엄 상태 확인 + 테스트용 토글(실 결제 SDK 연동 전 임시)
 
 ## 프리미엄 게이팅
 
