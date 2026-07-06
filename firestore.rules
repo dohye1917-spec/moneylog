@@ -41,5 +41,17 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.resource.data.shareId == myShareId();
       allow update, delete: if isSignedIn() && resource.data.shareId == myShareId();
     }
+
+    match /installments/{id} {
+      allow read: if isSignedIn() && resource.data.shareId == myShareId();
+      allow create: if isSignedIn() && request.resource.data.shareId == myShareId();
+      allow update, delete: if isSignedIn() && resource.data.shareId == myShareId();
+    }
+
+    // budgets: 문서 ID 자체가 shareId이므로 resource.data가 아니라 문서 ID를 비교
+    match /budgets/{shareId} {
+      allow read: if isSignedIn() && shareId == myShareId();
+      allow write: if isSignedIn() && shareId == myShareId();
+    }
   }
 }

@@ -1,17 +1,27 @@
 import { useState } from "react";
+import { ClipboardPaste, X } from "lucide-react";
 import { DEFAULT_CATEGORIES } from "../lib/categories";
 import { addTransaction, addCustomCategory } from "../lib/firestore";
 import CategoryGrid from "./CategoryGrid";
 import NumberPad from "./NumberPad";
 import AddCategoryModal from "./AddCategoryModal";
 import PremiumModal from "./PremiumModal";
+import SmsParseModal from "./SmsParseModal";
 
 const MAX_AMOUNT_DIGITS = 10;
+
+function formatPendingDate(date) {
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
 
 export default function AddScreen({ user, profile, customCategories, onSaved }) {
   const [amount, setAmount] = useState("");
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showPremium, setShowPremium] = useState(false);
+  const [showSmsParse, setShowSmsParse] = useState(false);
+  const [pendingDate, setPendingDate] = useState(null);
+  const [pendingMemo, setPendingMemo] = useState("");
   const [toast, setToast] = useState("");
   const [shake, setShake] = useState(false);
 
@@ -60,16 +70,29 @@ export default function AddScreen({ user, profile, customCategories, onSaved }) 
         category: category.name,
         emoji: category.emoji,
         color: category.color,
-        date: new Date(),
-        memo: "",
+        date: pendingDate || new Date(),
+        memo: pendingMemo,
       });
       setAmount("");
+      setPendingDate(null);
+      setPendingMemo("");
       showToast(`${category.emoji} ${category.name} · ${value.toLocaleString("ko-KR")}원 기록완료!`);
       onSaved?.();
     } catch (err) {
       console.error(err);
       showToast("저장에 실패했어요. 다시 시도해줘.");
     }
+  };
+
+  const handleSmsParsed = ({ amount: parsedAmount, date, memo }) => {
+    setAmount(String(parsedAmount));
+    setPendingDate(date);
+    setPendingMemo(memo);
+  };
+
+  const clearPending = () => {
+    setPendingDate(null);
+    setPendingMemo("");
   };
 
   const handleAddCategoryClick = () => {
@@ -89,7 +112,16 @@ export default function AddScreen({ user, profile, customCategories, onSaved }) 
   return (
     <div className="space-y-5">
       <div className={`text-center py-4 ${shake ? "animate-pulse" : ""}`}>
-        <p className="text-sm text-slate-400 mb-1">오늘 얼마 썼어?</p>
+        <div className="flex items-center justify-center gap-1.5 mb-1">
+          <p className="text-sm text-slate-400">오늘 얼마 썼어?</p>
+          <button
+            onClick={() => setShowSmsParse(true)}
+            className="text-slate-300 hover:text-slate-500"
+            title="결제 문자로 채우기"
+          >
+            <ClipboardPaste className="w-4 h-4" />
+          </button>
+        </div>
         <div className="flex items-center justify-center gap-1">
           <input
             type="text"
@@ -103,6 +135,17 @@ export default function AddScreen({ user, profile, customCategories, onSaved }) 
           />
           <span className="text-xl text-slate-400">원</span>
         </div>
+        {pendingDate && (
+          <div className="flex items-center justify-center gap-1 mt-1">
+            <span className="text-xs text-slate-400">
+              {formatPendingDate(pendingDate)}
+              {pendingMemo && ` · ${pendingMemo}`}로 기록돼요
+            </span>
+            <button onClick={clearPending} className="text-slate-300 hover:text-slate-500">
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        )}
       </div>
 
       <NumberPad onKeyPress={handleKeyPress} />
@@ -128,6 +171,11 @@ export default function AddScreen({ user, profile, customCategories, onSaved }) 
           setShowPremium(false);
           showToast("결제 연동은 준비 중이에요. 곧 만나요!");
         }}
+      />
+      <SmsParseModal
+        open={showSmsParse}
+        onClose={() => setShowSmsParse(false)}
+        onParsed={handleSmsParsed}
       />
 
       {toast && (

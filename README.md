@@ -10,6 +10,7 @@
 
 - React 18 + Vite + Tailwind CSS
 - Firebase (Firestore + Google Authentication)
+- Recharts (통계 대시보드 파이차트/막대차트)
 - Capacitor (Android/iOS 패키징용)
 
 ## 시작하기
@@ -31,6 +32,7 @@ npm run dev
 4. **Firestore Database** 생성 (아직 없다면 프로덕션 모드로 생성)
 5. **Firestore Database → 규칙** 탭에 이 저장소의 [`firestore.rules`](firestore.rules) 내용을 붙여넣고 배포
    - 규칙을 배포하지 않으면 기본값(모두 거부)이라 앱에서 읽기/쓰기가 모두 실패합니다.
+   - `installments`, `budgets` 컬렉션 규칙이 추가됐으니, 카드 할부·예산 기능을 쓰려면 규칙을 다시 배포해야 합니다(이미 배포했었어도 최신 내용으로 갱신 필요).
 6. 최초 실행 시 `getRealtimeTransactions`가 `shareId` + `date` 복합 인덱스를 요구할 수 있습니다.
    콘솔에 뜨는 "색인을 만드세요" 링크를 클릭해 인덱스를 생성해주세요.
 
@@ -44,7 +46,11 @@ npm run dev
 
 - `transactions`: id, userId, shareId, amount, category, emoji, color, date, memo
 - `categories`: 유저가 만든 커스텀 카테고리 (shareId, name, emoji, color) — 프리미엄 전용
-- `recurringPayments`: 정기 결제 알림 (shareId, name, amount, dayOfMonth, active)
+- `recurringPayments`: 정기 결제(고정지출) (shareId, name, amount, dayOfMonth, active, lastGeneratedYearMonth)
+  - `lastGeneratedYearMonth`는 앱이 dayOfMonth 도래를 감지해 자동으로 지출을 기록한 마지막 달("2026-07")을 기억해 중복 생성을 막는다.
+- `installments`: 카드 할부 (shareId, name, totalAmount, months, startYearMonth, category, emoji, color, active)
+  - 실제 지출 문서는 매달 생성하지 않고, 조회 시점에 `totalAmount / months`로 회차·금액을 계산한다(`src/lib/installments.js`).
+- `budgets`: 카테고리별 월 예산, 문서 ID가 shareId 자체인 단일 문서 (shareId, amounts: `{ [카테고리명]: 금액 }`)
 - `users`: uid, displayName, photoURL, email, isPremium(기본 false), shareId(기본값은 본인 uid, 공유 연동 시 상대방 uid로 전환)
 
 ## 핵심 화면

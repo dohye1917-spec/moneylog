@@ -1,7 +1,15 @@
 import { useEffect, useState } from "react";
 import { Wallet, AlertTriangle } from "lucide-react";
 import { useAuth } from "./context/AuthContext";
-import { getRealtimeTransactions, getRealtimeCategories } from "./lib/firestore";
+import {
+  getRealtimeTransactions,
+  getRealtimeCategories,
+  getRealtimeRecurringPayments,
+  getRealtimeInstallments,
+  addTransaction,
+  updateRecurringPayment,
+} from "./lib/firestore";
+import { computeMissedOccurrences, toYearMonth, previousYearMonth } from "./lib/recurring";
 import LoginScreen from "./components/LoginScreen";
 import AddScreen from "./components/AddScreen";
 import TransactionList from "./components/TransactionList";
@@ -46,6 +54,8 @@ export default function App() {
   const [tab, setTab] = useState("home");
   const [transactions, setTransactions] = useState([]);
   const [customCategories, setCustomCategories] = useState([]);
+  const [recurringItems, setRecurringItems] = useState([]);
+  const [installments, setInstallments] = useState([]);
 
   const shareId = profile?.shareId || user?.uid;
 
@@ -60,6 +70,54 @@ export default function App() {
     const unsub = getRealtimeCategories(shareId, setCustomCategories);
     return () => unsub();
   }, [shareId]);
+
+  useEffect(() => {
+    if (!shareId) return;
+    const unsub = getRealtimeRecurringPayments(shareId, setRecurringItems);
+    return () => unsub();
+  }, [shareId]);
+
+  useEffect(() => {
+    if (!shareId) return;
+    const unsub = getRealtimeInstallments(shareId, setInstallments);
+    return () => unsub();
+  }, [shareId]);
+
+  // 정기 결제(고정지출)가 등록된 dayOfMonth를 이미 지났는데 아직 실제 지출로
+  // 기록되지 않은 달이 있으면 자동으로 생성한다. 백엔드가 없어 클라이언트에서
+  // 처리하며, lastGeneratedYearMonth로 중복 생성을 막는다(마운트 가드를 쓰지
+  // 않는 이유: 앱을 며칠 안 켜도 밀린 달을 전부 따라잡아야 하기 때문).
+  useEffect(() => {
+    if (!shareId || recurringItems.length === 0) return;
+    (async () => {
+      const today = new Date();
+      for (const item of recurringItems) {
+        if (!item.active) continue;
+        const createdAtDate = item.createdAt?.toDate?.() ?? today;
+        const fromYearMonth = item.lastGeneratedYearMonth ?? previousYearMonth(toYearMonth(createdAtDate));
+        const missed = computeMissedOccurrences(item.dayOfMonth, fromYearMonth, today).filter(
+          (occ) => occ.targetDate >= createdAtDate
+        );
+        if (missed.length === 0) continue;
+
+        for (const occ of missed) {
+          await addTransaction({
+            userId: item.userId,
+            shareId,
+            amount: item.amount,
+            category: item.name,
+            emoji: item.emoji,
+            color: item.color,
+            date: occ.targetDate,
+            memo: "정기결제 자동 기록",
+          });
+        }
+        await updateRecurringPayment(item.id, {
+          lastGeneratedYearMonth: missed[missed.length - 1].yearMonth,
+        });
+      }
+    })();
+  }, [shareId, recurringItems]);
 
   if (error) {
     return (
@@ -123,7 +181,14 @@ export default function App() {
           </div>
         )}
 
-        {tab === "stats" && <StatsChart transactions={transactions} />}
+        {tab === "stats" && (
+          <StatsChart
+            transactions={transactions}
+            installments={installments}
+            customCategories={customCategories}
+            shareId={shareId}
+          />
+        )}
         {tab === "recurring" && <RecurringPayments shareId={shareId} />}
         {tab === "share" && <ShareBudget user={user} profile={profile} />}
         {tab === "settings" && (

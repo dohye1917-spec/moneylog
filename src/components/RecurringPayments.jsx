@@ -5,6 +5,7 @@ import {
   deleteRecurringPayment,
   getRealtimeRecurringPayments,
 } from "../lib/firestore";
+import InstallmentSection from "./InstallmentSection";
 
 function daysUntilNext(dayOfMonth) {
   const today = new Date();
@@ -128,6 +129,8 @@ export default function RecurringPayments({ shareId }) {
           <p className="text-center text-sm text-slate-400 py-6">등록된 정기 결제가 없어요.</p>
         )}
       </section>
+
+      <InstallmentSection userId={shareId} shareId={shareId} />
     </div>
   );
 }

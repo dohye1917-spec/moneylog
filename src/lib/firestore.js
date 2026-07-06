@@ -127,6 +127,65 @@ export function getRealtimeRecurringPayments(shareId, callback) {
 }
 
 // ---------------------------------------------------------------------------
+// installments (카드 할부) - 실제 트랜잭션은 생성하지 않고 조회 시 계산만 함
+// ---------------------------------------------------------------------------
+
+export async function addInstallment(data) {
+  const ref = await addDoc(collection(db, "installments"), {
+    userId: data.userId,
+    shareId: data.shareId,
+    name: data.name,
+    totalAmount: Number(data.totalAmount) || 0,
+    months: Number(data.months) || 1,
+    startYearMonth: data.startYearMonth,
+    category: data.category || data.name,
+    emoji: data.emoji || "💳",
+    color: data.color || "#E3D9FF",
+    active: true,
+    createdAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function deleteInstallment(id) {
+  await deleteDoc(doc(db, "installments", id));
+}
+
+export function getRealtimeInstallments(shareId, callback) {
+  const q = query(collection(db, "installments"), where("shareId", "==", shareId));
+  return onSnapshot(q, (snapshot) => {
+    const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    callback(list);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// budgets (카테고리별 월 예산) - 문서 ID가 shareId 자체인 단일 문서
+// ---------------------------------------------------------------------------
+
+/**
+ * 카테고리 하나의 예산만 갱신한다. setDoc(merge)를 얕은 병합으로 쓰면
+ * amounts 맵 전체가 덮어써져 다른 카테고리 예산이 사라지므로,
+ * 반드시 현재 값을 읽어와 병합한 뒤 다시 써야 한다.
+ */
+export async function setBudget(shareId, categoryName, amount) {
+  const ref = doc(db, "budgets", shareId);
+  const snap = await getDoc(ref);
+  const current = snap.exists() ? snap.data().amounts || {} : {};
+  await setDoc(ref, {
+    shareId,
+    amounts: { ...current, [categoryName]: Number(amount) || 0 },
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export function getRealtimeBudget(shareId, callback) {
+  return onSnapshot(doc(db, "budgets", shareId), (snap) => {
+    callback(snap.exists() ? snap.data() : { amounts: {} });
+  });
+}
+
+// ---------------------------------------------------------------------------
 // users (유저 프로필: isPremium, shareId)
 // ---------------------------------------------------------------------------
 
