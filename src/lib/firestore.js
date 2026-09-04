@@ -6,14 +6,18 @@ import {
   deleteDoc,
   setDoc,
   getDoc,
+  getDocs,
   onSnapshot,
   query,
   where,
   orderBy,
   serverTimestamp,
   Timestamp,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "../firebase";
+
+const BATCH_CHUNK_SIZE = 450; // Firestore 배치는 최대 500개 쓰기까지 허용, 여유를 둠
 
 // ---------------------------------------------------------------------------
 // transactions (지출 내역)
@@ -275,4 +279,34 @@ export async function leaveShare(uid) {
 
 export async function setPremium(uid, isPremium) {
   await updateDoc(doc(db, "users", uid), { isPremium });
+}
+
+async function deleteQueryResults(q) {
+  const snap = await getDocs(q);
+  for (let i = 0; i < snap.docs.length; i += BATCH_CHUNK_SIZE) {
+    const batch = writeBatch(db);
+    snap.docs.slice(i, i + BATCH_CHUNK_SIZE).forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+  }
+}
+
+/**
+ * 계정 탈퇴 시 유저 데이터를 정리한다. 공유가계부를 쓰는 중이라면(shareId가 본인
+ * uid가 아니라면) categories/budgets는 상대방과 함께 쓰는 데이터라 건드리지
+ * 않고, 본인이 직접 만든 transactions/recurringPayments/installments만 지운다.
+ * 공유 중이 아니라면(shareId === uid, 온전히 내 소유) 전부 지운다.
+ * users/{uid} 문서는 다른 규칙 검사(myShareId())가 이 문서를 참조하므로 항상
+ * 맨 마지막에 지운다.
+ */
+export async function deleteAccountData(uid, shareId) {
+  await deleteQueryResults(query(collection(db, "transactions"), where("userId", "==", uid)));
+  await deleteQueryResults(query(collection(db, "recurringPayments"), where("userId", "==", uid)));
+  await deleteQueryResults(query(collection(db, "installments"), where("userId", "==", uid)));
+
+  if (shareId === uid) {
+    await deleteQueryResults(query(collection(db, "categories"), where("shareId", "==", uid)));
+    await deleteDoc(doc(db, "budgets", uid));
+  }
+
+  await deleteDoc(doc(db, "users", uid));
 }

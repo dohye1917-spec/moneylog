@@ -14,10 +14,12 @@ service cloud.firestore {
     }
 
     // users: 본인 문서만 쓰기 가능, 공유 코드 확인을 위해 읽기는 로그인 유저 모두 허용
+    // delete는 계정 탈퇴 시 본인 문서를 지우기 위해 필요함
     match /users/{uid} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && request.auth.uid == uid;
       allow update: if isSignedIn() && request.auth.uid == uid;
+      allow delete: if isSignedIn() && request.auth.uid == uid;
     }
 
     // transactions / categories / recurringPayments:

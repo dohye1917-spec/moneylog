@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
-import { Crown, LogOut, Sparkles, Check } from "lucide-react";
+import { Crown, LogOut, Sparkles, Check, UserX } from "lucide-react";
 import { setPremium, updateUserProfile } from "../lib/firestore";
 import ProfilePhotoButton from "./ProfilePhotoButton";
+import DeleteAccountModal from "./DeleteAccountModal";
 
 export default function SettingsScreen({ user, profile, onSignOut }) {
   const isPremium = !!profile?.isPremium;
   const [name, setName] = useState(profile?.displayName || "");
   const [toast, setToast] = useState("");
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
 
   useEffect(() => {
     setName(profile?.displayName || "");
@@ -92,7 +94,20 @@ export default function SettingsScreen({ user, profile, onSignOut }) {
         <h2 className="text-sm font-bold text-slate-700 mb-2">계정 정보</h2>
         <p className="text-xs text-slate-400">사용자 ID</p>
         <p className="text-xs font-mono text-slate-600 break-all">{user?.uid}</p>
+        <button
+          onClick={() => setShowDeleteAccount(true)}
+          className="w-full flex items-center justify-center gap-1 rounded-xl border border-rose-200 text-rose-500 text-sm font-semibold py-2.5 mt-3 hover:bg-rose-50"
+        >
+          <UserX className="w-4 h-4" /> 계정 탈퇴하기
+        </button>
       </section>
+
+      <DeleteAccountModal
+        open={showDeleteAccount}
+        onClose={() => setShowDeleteAccount(false)}
+        user={user}
+        profile={profile}
+      />
 
       {toast && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-sm px-4 py-2 rounded-full shadow-lg z-50 whitespace-nowrap">

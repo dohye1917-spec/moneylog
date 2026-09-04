@@ -1,4 +1,4 @@
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { storage } from "../firebase";
 
 const UPLOAD_TIMEOUT_MS = 15000;
@@ -24,4 +24,16 @@ export async function uploadProfilePhoto(uid, file) {
   const fileRef = ref(storage, `profile-photos/${uid}`);
   await withTimeout(uploadBytes(fileRef, file), UPLOAD_TIMEOUT_MS);
   return getDownloadURL(fileRef);
+}
+
+/**
+ * 계정 탈퇴 시 프로필 사진을 정리한다. 애초에 사진을 올린 적이 없으면
+ * storage/object-not-found로 실패하는 게 정상이라 조용히 무시한다.
+ */
+export async function deleteProfilePhoto(uid) {
+  try {
+    await deleteObject(ref(storage, `profile-photos/${uid}`));
+  } catch (err) {
+    if (err.code !== "storage/object-not-found") throw err;
+  }
 }
