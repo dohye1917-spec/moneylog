@@ -11,6 +11,7 @@ import {
 } from "./lib/firestore";
 import { computeMissedOccurrences, toYearMonth, previousYearMonth } from "./lib/recurring";
 import LoginScreen from "./components/LoginScreen";
+import ProfilePhotoButton from "./components/ProfilePhotoButton";
 import AddScreen from "./components/AddScreen";
 import TransactionList from "./components/TransactionList";
 import StatsChart from "./components/StatsChart";
@@ -58,9 +59,13 @@ function describeFatalError(error) {
   );
 }
 
+const TAB_STORAGE_KEY = "moneylog_tab";
+
 export default function App() {
   const { user, profile, loading, error, signInError, signInWithGoogle, signOut } = useAuth();
-  const [tab, setTab] = useState("home");
+  // 새로고침해도 보던 탭에 그대로 머물도록 localStorage에 저장한다
+  // (URL 라우팅이 없어 리액트 state만으로는 새로고침 시 항상 홈으로 돌아감).
+  const [tab, setTab] = useState(() => localStorage.getItem(TAB_STORAGE_KEY) || "home");
   const [transactions, setTransactions] = useState([]);
   const [customCategories, setCustomCategories] = useState([]);
   const [recurringItems, setRecurringItems] = useState([]);
@@ -69,6 +74,16 @@ export default function App() {
   // 로그를 남기고 화면엔 아무 표시가 없어 "저장은 되는데 목록엔 안 뜬다"처럼
   // 보이므로, 실제 에러를 잡아 화면에 노출한다.
   const [dataError, setDataError] = useState(null);
+  const [headerToast, setHeaderToast] = useState("");
+
+  const showHeaderToast = (msg) => {
+    setHeaderToast(msg);
+    setTimeout(() => setHeaderToast(""), 1800);
+  };
+
+  useEffect(() => {
+    localStorage.setItem(TAB_STORAGE_KEY, tab);
+  }, [tab]);
 
   const shareId = profile?.shareId || user?.uid;
 
@@ -174,14 +189,7 @@ export default function App() {
             <Wallet className="w-6 h-6 text-slate-700" />
             머니로그
           </h1>
-          <button
-            onClick={() => setTab("settings")}
-            className="w-9 h-9 rounded-full overflow-hidden bg-slate-200 shrink-0"
-          >
-            {profile.photoURL && (
-              <img src={profile.photoURL} alt={profile.displayName || "프로필"} className="w-full h-full object-cover" />
-            )}
-          </button>
+          <ProfilePhotoButton user={user} profile={profile} size="w-9 h-9" onToast={showHeaderToast} />
         </header>
 
         {tab === "home" && (
@@ -211,6 +219,12 @@ export default function App() {
       </div>
 
       <BottomNav active={tab} onChange={setTab} />
+
+      {headerToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-sm px-4 py-2 rounded-full shadow-lg z-50 whitespace-nowrap">
+          {headerToast}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,13 +1,11 @@
-import { useEffect, useRef, useState } from "react";
-import { Crown, LogOut, Sparkles, Camera, Check } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Crown, LogOut, Sparkles, Check } from "lucide-react";
 import { setPremium, updateUserProfile } from "../lib/firestore";
-import { uploadProfilePhoto } from "../lib/storage";
+import ProfilePhotoButton from "./ProfilePhotoButton";
 
 export default function SettingsScreen({ user, profile, onSignOut }) {
   const isPremium = !!profile?.isPremium;
-  const fileInputRef = useRef(null);
   const [name, setName] = useState(profile?.displayName || "");
-  const [uploading, setUploading] = useState(false);
   const [toast, setToast] = useState("");
 
   useEffect(() => {
@@ -25,54 +23,13 @@ export default function SettingsScreen({ user, profile, onSignOut }) {
     showToast("이름을 변경했어요!");
   };
 
-  const handlePhotoClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handlePhotoChange = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-
-    setUploading(true);
-    try {
-      const url = await uploadProfilePhoto(user.uid, file);
-      await updateUserProfile(user.uid, { photoURL: url });
-      showToast("프로필 사진을 변경했어요!");
-    } catch (err) {
-      console.error("프로필 사진 업로드 실패:", err);
-      showToast("사진 업로드에 실패했어요. 다시 시도해줘.");
-    } finally {
-      setUploading(false);
-    }
-  };
-
   return (
     <div className="space-y-5">
       <section className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
         <div className="flex items-center gap-3">
-          <button
-            onClick={handlePhotoClick}
-            disabled={uploading}
-            className="relative w-14 h-14 rounded-full overflow-hidden bg-slate-200 shrink-0"
-          >
-            {profile?.photoURL && (
-              <img src={profile.photoURL} alt={profile.displayName || "프로필"} className="w-full h-full object-cover" />
-            )}
-            <span className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity">
-              <Camera className="w-5 h-5 text-white" />
-            </span>
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handlePhotoChange}
-            className="hidden"
-          />
+          <ProfilePhotoButton user={user} profile={profile} size="w-14 h-14" onToast={showToast} />
           <div className="min-w-0 flex-1">
             <p className="text-xs text-slate-400 truncate">{profile?.email}</p>
-            {uploading && <p className="text-xs text-slate-400">사진 업로드 중...</p>}
           </div>
           <button
             onClick={onSignOut}

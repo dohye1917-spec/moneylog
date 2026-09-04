@@ -50,6 +50,7 @@ export default function StatsChart({ transactions, installments, customCategorie
       <BudgetGauges
         rows={rows}
         budgetAmounts={budget.amounts || {}}
+        categories={allCategories}
         onOpenSettings={() => setShowBudgetSetting(true)}
       />
 

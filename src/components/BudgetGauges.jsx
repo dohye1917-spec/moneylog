@@ -9,8 +9,24 @@ function gaugeColorClass(pct) {
   return "bg-emerald-400";
 }
 
-export default function BudgetGauges({ rows, budgetAmounts, onOpenSettings }) {
-  const budgeted = rows.filter((r) => (budgetAmounts[r.category] || 0) > 0);
+export default function BudgetGauges({ rows, budgetAmounts, categories, onOpenSettings }) {
+  // rows는 "이번 달에 지출이 있는 카테고리"만 담고 있어서, 예산만 설정하고
+  // 아직 한 번도 안 쓴 카테고리는 여기 없다. 예산이 설정된 모든 카테고리
+  // 기준으로 목록을 만들고, 지출은 있으면 가져오고 없으면 0으로 둔다.
+  const budgeted = Object.entries(budgetAmounts)
+    .filter(([, amount]) => amount > 0)
+    .map(([category, budget]) => {
+      const spent = rows.find((r) => r.category === category);
+      const meta = categories.find((c) => c.name === category);
+      return {
+        category,
+        budget,
+        amount: spent?.amount || 0,
+        emoji: spent?.emoji || meta?.emoji || "🧾",
+        color: spent?.color || meta?.color || "#F0F0F0",
+      };
+    })
+    .sort((a, b) => b.amount / b.budget - a.amount / a.budget);
 
   return (
     <section className="bg-white rounded-2xl border border-slate-200 p-5">
@@ -34,8 +50,7 @@ export default function BudgetGauges({ rows, budgetAmounts, onOpenSettings }) {
 
       <div className="space-y-3">
         {budgeted.map((r) => {
-          const budget = budgetAmounts[r.category];
-          const pct = Math.round((r.amount / budget) * 100);
+          const pct = Math.round((r.amount / r.budget) * 100);
           return (
             <div key={r.category}>
               <div className="flex justify-between text-sm mb-1">
@@ -43,7 +58,7 @@ export default function BudgetGauges({ rows, budgetAmounts, onOpenSettings }) {
                   {r.emoji} {r.category}
                 </span>
                 <span className="text-slate-500">
-                  {r.amount.toLocaleString("ko-KR")} / {budget.toLocaleString("ko-KR")}원 · {pct}%
+                  {r.amount.toLocaleString("ko-KR")} / {r.budget.toLocaleString("ko-KR")}원 · {pct}%
                 </span>
               </div>
               <div className="w-full bg-slate-100 rounded-full h-2.5">
