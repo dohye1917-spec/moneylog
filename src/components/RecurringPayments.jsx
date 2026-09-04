@@ -50,6 +50,11 @@ export default function RecurringPayments({ shareId }) {
     setDayOfMonth("1");
   };
 
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    handleAdd();
+  };
+
   return (
     <div className="space-y-5">
       {upcoming.length > 0 && (
@@ -70,38 +75,40 @@ export default function RecurringPayments({ shareId }) {
         <h2 className="text-sm font-bold text-slate-700 flex items-center gap-1">
           <RefreshCw className="w-4 h-4" /> 정기 결제 등록
         </h2>
-        <div className="grid grid-cols-2 gap-2">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="예: 넷플릭스"
-            className="col-span-2 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
-          />
-          <input
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="금액"
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
-          />
-          <select
-            value={dayOfMonth}
-            onChange={(e) => setDayOfMonth(e.target.value)}
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="예: 넷플릭스"
+              className="col-span-2 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+            />
+            <input
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="금액"
+              className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+            />
+            <select
+              value={dayOfMonth}
+              onChange={(e) => setDayOfMonth(e.target.value)}
+              className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+            >
+              {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+                <option key={d} value={d}>
+                  매월 {d}일
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="submit"
+            className="w-full flex items-center justify-center gap-1 rounded-xl bg-slate-900 text-white text-sm font-semibold py-2.5 hover:bg-slate-800 transition"
           >
-            {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
-              <option key={d} value={d}>
-                매월 {d}일
-              </option>
-            ))}
-          </select>
-        </div>
-        <button
-          onClick={handleAdd}
-          className="w-full flex items-center justify-center gap-1 rounded-xl bg-slate-900 text-white text-sm font-semibold py-2.5 hover:bg-slate-800 transition"
-        >
-          <Plus className="w-4 h-4" /> 등록하기
-        </button>
+            <Plus className="w-4 h-4" /> 등록하기
+          </button>
+        </form>
 
         <div className="space-y-2 pt-1">
           {items.map((i) => (

@@ -154,6 +154,7 @@ export async function addInstallment(data) {
     totalAmount: Number(data.totalAmount) || 0,
     months: Number(data.months) || 1,
     startYearMonth: data.startYearMonth,
+    dayOfMonth: Number(data.dayOfMonth) || 1,
     category: data.category || data.name,
     emoji: data.emoji || "💳",
     color: data.color || "#E3D9FF",
