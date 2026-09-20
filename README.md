@@ -32,9 +32,10 @@ npm run dev
 4. **Firestore Database** 생성 (아직 없다면 프로덕션 모드로 생성)
 5. **Firestore Database → 규칙** 탭에 이 저장소의 [`firestore.rules`](firestore.rules) 내용을 붙여넣고 배포
    - 규칙을 배포하지 않으면 기본값(모두 거부)이라 앱에서 읽기/쓰기가 모두 실패합니다.
-   - `installments`, `budgets` 컬렉션 규칙이 추가됐으니, 카드 할부·예산 기능을 쓰려면 규칙을 다시 배포해야 합니다(이미 배포했었어도 최신 내용으로 갱신 필요).
+   - `installments`, `budgets`, `sharedTransactions` 컬렉션 규칙이 추가됐으니, 카드 할부·예산·공유 가계부 기능을 쓰려면 규칙을 다시 배포해야 합니다(이미 배포했었어도 최신 내용으로 갱신 필요).
 6. 최초 실행 시 `getRealtimeTransactions`가 `shareId` + `date` 복합 인덱스를 요구할 수 있습니다.
    콘솔에 뜨는 "색인을 만드세요" 링크를 클릭해 인덱스를 생성해주세요.
+   - 공유 가계부(`getRealtimeSharedTransactions`)도 `coupleId` + `date` 복합 인덱스가 별도로 필요합니다 — 공유 가계부에서 처음 지출을 추가할 때 같은 방식으로 안내가 뜹니다.
 7. **Storage** (프로필 사진 업로드용)
    - 왼쪽 메뉴 **Storage** → 아직 시작 안 했다면 "시작하기"로 기본 버킷 생성
    - **Storage → 규칙** 탭에 이 저장소의 [`storage.rules`](storage.rules) 내용을 붙여넣고 배포
@@ -55,14 +56,15 @@ npm run dev
 - `installments`: 카드 할부 (shareId, name, totalAmount, months, startYearMonth, category, emoji, color, active)
   - 실제 지출 문서는 매달 생성하지 않고, 조회 시점에 `totalAmount / months`로 회차·금액을 계산한다(`src/lib/installments.js`).
 - `budgets`: 카테고리별 월 예산, 문서 ID가 shareId 자체인 단일 문서 (shareId, amounts: `{ [카테고리명]: 금액 }`)
-- `users`: uid, displayName, photoURL, email, isPremium(기본 false), shareId(기본값은 본인 uid, 공유 연동 시 상대방 uid로 전환)
+- `sharedTransactions`: 공유 가계부(커플 연동) 지출 내역 — `transactions`와 형태는 같지만 `shareId` 대신 `coupleId`로 스코프. 개인 가계부와 완전히 분리된 별도 공간.
+- `users`: uid, displayName, photoURL, email, isPremium(기본 false), shareId(기본값은 본인 uid — 예전 방식 공유 연동의 잔재, 신규 연동에는 더 이상 쓰지 않음), coupleId(기본값 없음, 커플 연동 시 상대방 uid로 설정 — 공유 가계부 전용, 개인 가계부에는 영향 없음)
 
 ## 핵심 화면
 
 - **로그인**: 파스텔톤 "구글 계정으로 시작하기" 화면 (로그인 전엔 앱 진입 불가)
 - **홈**: 금액 입력(NumberPad) → 카테고리 버튼 한 번 탭 → 즉시 저장 (별도 저장 버튼 없음)
 - **정기결제**: 구독/보험료 등록, D-3 이내 결제 예정 항목 배너 알림 (스텁: 실제 푸시알림 미연동)
-- **공유가계부**: 내 공유 코드(uid) 안내, 상대방 코드 입력 시 `shareId` 동기화
+- **공유가계부**: 내 커플 코드(uid) 안내, 상대방 코드 입력 시 연동 → 개인 가계부와는 별개인 공유 지출 목록을 둘이 함께 입력/조회 (예전 방식으로 공유했던 계정에는 해제 안내 배너 표시)
 - **설정**: 프로필 사진/이름 직접 변경(Firebase Storage 업로드), 계정 정보(사용자 ID), 로그아웃, 프리미엄 상태 확인 + 테스트용 토글(실 결제 SDK 연동 전 임시)
 
 ## 프리미엄 게이팅

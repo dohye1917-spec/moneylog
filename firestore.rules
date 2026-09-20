@@ -13,6 +13,14 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.shareId;
     }
 
+    // coupleId는 없는 유저 문서도 있어서(신규 필드), .data.coupleId를 바로 읽으면
+    // 필드가 없을 때 규칙 평가 자체가 에러난다. get(key, default)로 안전하게 읽고
+    // 클라이언트와 동일하게 "없으면 본인 uid"로 폴백한다.
+    function myCoupleId() {
+      let cid = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('coupleId', null);
+      return cid == null ? request.auth.uid : cid;
+    }
+
     // users: 본인 문서만 쓰기 가능, 공유 코드 확인을 위해 읽기는 로그인 유저 모두 허용
     // delete는 계정 탈퇴 시 본인 문서를 지우기 위해 필요함
     match /users/{uid} {
@@ -54,6 +62,16 @@ service cloud.firestore {
     match /budgets/{shareId} {
       allow read: if isSignedIn() && shareId == myShareId();
       allow write: if isSignedIn() && shareId == myShareId();
+    }
+
+    // sharedTransactions: 개인 가계부(shareId)와 완전히 별개인 공유 가계부.
+    // coupleId(연동한 두 사람만 공유)로 스코프한다.
+    match /sharedTransactions/{id} {
+      allow read: if isSignedIn() && resource.data.coupleId == myCoupleId();
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.coupleId == myCoupleId();
+      allow update, delete: if isSignedIn() && resource.data.coupleId == myCoupleId();
     }
   }
 }

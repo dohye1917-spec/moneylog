@@ -8,7 +8,7 @@ function formatDateLabel(ts) {
   return `${d.getMonth() + 1}월 ${d.getDate()}일`;
 }
 
-export default function TransactionList({ transactions }) {
+export default function TransactionList({ transactions, onDelete = deleteTransaction }) {
   const monthTotal = useMemo(
     () => transactions.reduce((sum, t) => sum + (Number(t.amount) || 0), 0),
     [transactions]
@@ -62,7 +62,7 @@ export default function TransactionList({ transactions }) {
                   {Number(t.amount).toLocaleString("ko-KR")}원
                 </span>
                 <button
-                  onClick={() => deleteTransaction(t.id)}
+                  onClick={() => onDelete(t.id)}
                   className="text-slate-300 hover:text-red-400"
                 >
                   <Trash2 className="w-4 h-4" />

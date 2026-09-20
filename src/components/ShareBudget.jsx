@@ -1,14 +1,40 @@
-import { useState } from "react";
-import { Copy, Users, LogOut } from "lucide-react";
-import { joinShare, leaveShare } from "../lib/firestore";
+import { useEffect, useState } from "react";
+import { Copy, Users, LogOut, AlertTriangle } from "lucide-react";
+import {
+  joinShare,
+  leaveShare,
+  joinCouple,
+  leaveCouple,
+  addSharedTransaction,
+  deleteSharedTransaction,
+  getRealtimeSharedTransactions,
+} from "../lib/firestore";
+import { DEFAULT_CATEGORIES } from "../lib/categories";
+import CategoryGrid from "./CategoryGrid";
+import NumberPad from "./NumberPad";
+import TransactionList from "./TransactionList";
+
+const MAX_AMOUNT_DIGITS = 10;
 
 export default function ShareBudget({ user, profile }) {
   const [code, setCode] = useState("");
   const [toast, setToast] = useState("");
   const [busy, setBusy] = useState(false);
+  const [amount, setAmount] = useState("");
+  const [shake, setShake] = useState(false);
+  const [sharedTx, setSharedTx] = useState([]);
 
-  const isSharing = profile?.shareId && profile.shareId !== user?.uid;
   const myCode = user?.uid || "";
+  const coupleId = profile?.coupleId || user?.uid;
+  const isLinked = !!(profile?.coupleId && profile.coupleId !== user?.uid);
+  // 예전 방식(shareId를 상대방 것으로 통째로 덮어쓰던 방식)의 잔재 — 개인
+  // 가계부 전체가 상대방과 섞여 있는 상태라, 별도 안내와 해제 버튼을 보여준다.
+  const isLegacySharing = !!(profile?.shareId && profile.shareId !== user?.uid);
+
+  useEffect(() => {
+    if (!isLinked) return;
+    return getRealtimeSharedTransactions(coupleId, setSharedTx);
+  }, [isLinked, coupleId]);
 
   const showToast = (msg) => {
     setToast(msg);
@@ -18,7 +44,7 @@ export default function ShareBudget({ user, profile }) {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(myCode);
-      showToast("공유 코드를 복사했어요!");
+      showToast("커플 코드를 복사했어요!");
     } catch {
       showToast("복사가 막혔어요. 코드를 직접 선택해서 복사해줘!");
     }
@@ -28,8 +54,8 @@ export default function ShareBudget({ user, profile }) {
     if (!code.trim()) return;
     setBusy(true);
     try {
-      await joinShare(user.uid, code.trim());
-      showToast("연동 완료! 이제 가계부를 함께 써요 🎉");
+      await joinCouple(user.uid, code.trim());
+      showToast("연동 완료! 이제 공유 가계부를 함께 써요 🎉");
       setCode("");
     } catch (err) {
       showToast(err.message || "연동에 실패했어요.");
@@ -38,24 +64,92 @@ export default function ShareBudget({ user, profile }) {
     }
   };
 
-  const handleLeave = async () => {
+  const handleLeaveCouple = async () => {
     setBusy(true);
     try {
-      await leaveShare(user.uid);
-      showToast("공유를 해제했어요.");
+      await leaveCouple(user.uid);
+      showToast("공유 가계부 연동을 해제했어요.");
     } finally {
       setBusy(false);
     }
   };
 
+  const handleLeaveLegacy = async () => {
+    setBusy(true);
+    try {
+      await leaveShare(user.uid);
+      showToast("이전 방식 공유를 해제했어요. 개인 가계부가 다시 분리됐어요.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleKeyPress = (key) => {
+    if (key === "back") {
+      setAmount((prev) => prev.slice(0, -1));
+      return;
+    }
+    setAmount((prev) => {
+      const next = (prev + key).replace(/^0+(?=\d)/, "");
+      return next.length > MAX_AMOUNT_DIGITS ? prev : next;
+    });
+  };
+
+  const handleSelectCategory = async (category) => {
+    const value = Number(amount);
+    if (!value) {
+      setShake(true);
+      setTimeout(() => setShake(false), 400);
+      showToast("먼저 금액을 입력해줘!");
+      return;
+    }
+
+    try {
+      await addSharedTransaction({
+        userId: user.uid,
+        coupleId,
+        amount: value,
+        category: category.name,
+        emoji: category.emoji,
+        color: category.color,
+        date: new Date(),
+      });
+      setAmount("");
+      showToast(`${category.emoji} ${category.name} · ${value.toLocaleString("ko-KR")}원 기록완료!`);
+    } catch (err) {
+      console.error(err);
+      showToast("저장에 실패했어요. 다시 시도해줘.");
+    }
+  };
+
   return (
     <div className="space-y-5">
+      {isLegacySharing && (
+        <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 space-y-2">
+          <p className="text-sm font-bold text-amber-800 flex items-center gap-1">
+            <AlertTriangle className="w-4 h-4" /> 예전 방식으로 공유 중이에요
+          </p>
+          <p className="text-xs text-amber-700 leading-relaxed">
+            공유 ID: <span className="font-mono">{profile.shareId}</span> — 상대방이 내 개인
+            가계부 전체를 보게 되는 예전 버전의 문제가 있던 기능이에요. 해제해도 지출
+            내역은 사라지지 않아요.
+          </p>
+          <button
+            onClick={handleLeaveLegacy}
+            disabled={busy}
+            className="w-full rounded-xl border border-amber-300 text-amber-700 text-sm font-semibold py-2 hover:bg-amber-100 disabled:opacity-50"
+          >
+            이전 방식 공유 해제
+          </button>
+        </div>
+      )}
+
       <section className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3">
         <h2 className="text-sm font-bold text-slate-700 flex items-center gap-1">
-          <Users className="w-4 h-4" /> 내 공유 코드
+          <Users className="w-4 h-4" /> 내 커플 코드
         </h2>
         <p className="text-xs text-slate-400">
-          이 코드를 커플/가족에게 알려주면 같은 가계부를 함께 쓸 수 있어요.
+          이 코드를 커플/가족에게 알려주면 공유 가계부를 함께 쓸 수 있어요.
         </p>
         <div className="flex items-center gap-2">
           <code className="flex-1 truncate rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-600">
@@ -70,27 +164,14 @@ export default function ShareBudget({ user, profile }) {
         </div>
       </section>
 
-      <section className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3">
-        <h2 className="text-sm font-bold text-slate-700">공유 코드로 연동하기</h2>
-        {isSharing ? (
-          <div className="space-y-2">
-            <p className="text-xs text-slate-500">
-              현재 공유 가계부를 사용 중이에요. (공유 ID: <span className="font-mono">{profile.shareId}</span>)
-            </p>
-            <button
-              onClick={handleLeave}
-              disabled={busy}
-              className="w-full flex items-center justify-center gap-1 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold py-2.5 hover:bg-slate-50 disabled:opacity-50"
-            >
-              <LogOut className="w-4 h-4" /> 내 가계부로 돌아가기
-            </button>
-          </div>
-        ) : (
+      {!isLinked ? (
+        <section className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3">
+          <h2 className="text-sm font-bold text-slate-700">커플 코드로 연동하기</h2>
           <div className="flex gap-2">
             <input
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="상대방 공유 코드 입력"
+              placeholder="상대방 커플 코드 입력"
               className="flex-1 min-w-0 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
             />
             <button
@@ -101,8 +182,46 @@ export default function ShareBudget({ user, profile }) {
               연동
             </button>
           </div>
-        )}
-      </section>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            코드를 연동하면 별도의 "공유 가계부"가 새로 생겨요. 각자의 개인 가계부는
+            그대로 유지돼요.
+          </p>
+        </section>
+      ) : (
+        <>
+          <section className={`bg-white rounded-2xl border border-slate-200 p-5 space-y-4 ${shake ? "animate-pulse" : ""}`}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-bold text-slate-700">같이 쓰는 지출 추가</h2>
+              <button
+                onClick={handleLeaveCouple}
+                disabled={busy}
+                className="flex items-center gap-1 text-xs font-semibold text-slate-400 hover:text-slate-600 disabled:opacity-50"
+              >
+                <LogOut className="w-3.5 h-3.5" /> 연동 해제
+              </button>
+            </div>
+
+            <div className="text-center py-2">
+              <div className="flex items-center justify-center gap-1">
+                <span className="text-4xl font-bold text-slate-800 tabular-nums">
+                  {amount ? Number(amount).toLocaleString("ko-KR") : "0"}
+                </span>
+                <span className="text-xl text-slate-400">원</span>
+              </div>
+            </div>
+
+            <NumberPad onKeyPress={handleKeyPress} />
+
+            <CategoryGrid
+              categories={DEFAULT_CATEGORIES}
+              onSelect={handleSelectCategory}
+              onAddCategory={() => showToast("공유 가계부는 기본 카테고리만 사용할 수 있어요.")}
+            />
+          </section>
+
+          <TransactionList transactions={sharedTx} onDelete={deleteSharedTransaction} />
+        </>
+      )}
 
       {toast && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-sm px-4 py-2 rounded-full shadow-lg z-50 whitespace-nowrap">

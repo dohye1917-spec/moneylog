@@ -277,6 +277,61 @@ export async function leaveShare(uid) {
   await updateDoc(doc(db, "users", uid), { shareId: uid });
 }
 
+// ---------------------------------------------------------------------------
+// 공유 가계부(coupleId) - 개인 가계부(shareId)와 완전히 별개인 둘만의 공간.
+// joinShare/leaveShare(위)는 옛 방식(개인 가계부 자체를 상대방 것으로 바꿔버림)의
+// 잔재 정리용으로만 남겨두고, 새 연동은 이쪽을 쓴다.
+// ---------------------------------------------------------------------------
+
+export async function joinCouple(uid, coupleCode) {
+  const code = coupleCode.trim();
+  if (!code) throw new Error("커플 코드를 입력해주세요.");
+  if (code === uid) throw new Error("본인 코드는 입력할 수 없어요.");
+  const targetSnap = await getDoc(doc(db, "users", code));
+  if (!targetSnap.exists()) throw new Error("존재하지 않는 커플 코드예요.");
+  await updateDoc(doc(db, "users", uid), { coupleId: code });
+  return code;
+}
+
+export async function leaveCouple(uid) {
+  await updateDoc(doc(db, "users", uid), { coupleId: null });
+}
+
+export async function addSharedTransaction(data) {
+  const ref = await addDoc(collection(db, "sharedTransactions"), {
+    userId: data.userId,
+    coupleId: data.coupleId,
+    amount: Number(data.amount) || 0,
+    category: data.category,
+    emoji: data.emoji || "🧾",
+    color: data.color || "#F0F0F0",
+    memo: data.memo || "",
+    date: data.date instanceof Date ? Timestamp.fromDate(data.date) : serverTimestamp(),
+    createdAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function deleteSharedTransaction(id) {
+  await deleteDoc(doc(db, "sharedTransactions", id));
+}
+
+export function getRealtimeSharedTransactions(coupleId, callback, onError) {
+  const q = query(
+    collection(db, "sharedTransactions"),
+    where("coupleId", "==", coupleId),
+    orderBy("date", "desc")
+  );
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      callback(list);
+    },
+    onError
+  );
+}
+
 export async function setPremium(uid, isPremium) {
   await updateDoc(doc(db, "users", uid), { isPremium });
 }
@@ -291,17 +346,20 @@ async function deleteQueryResults(q) {
 }
 
 /**
- * 계정 탈퇴 시 유저 데이터를 정리한다. 공유가계부를 쓰는 중이라면(shareId가 본인
- * uid가 아니라면) categories/budgets는 상대방과 함께 쓰는 데이터라 건드리지
- * 않고, 본인이 직접 만든 transactions/recurringPayments/installments만 지운다.
- * 공유 중이 아니라면(shareId === uid, 온전히 내 소유) 전부 지운다.
- * users/{uid} 문서는 다른 규칙 검사(myShareId())가 이 문서를 참조하므로 항상
- * 맨 마지막에 지운다.
+ * 계정 탈퇴 시 유저 데이터를 정리한다. 개인 가계부가 예전 방식으로 공유 중이라면
+ * (shareId가 본인 uid가 아니라면) categories/budgets는 상대방과 함께 쓰는 데이터라
+ * 건드리지 않고, 본인이 직접 만든 transactions/recurringPayments/installments만
+ * 지운다. 공유 중이 아니라면(shareId === uid, 온전히 내 소유) 전부 지운다.
+ * sharedTransactions(공유 가계부, coupleId 기반)는 개인 작성 문서라 공유 여부와
+ * 무관하게 항상 본인 것만 지운다.
+ * users/{uid} 문서는 다른 규칙 검사(myShareId()/myCoupleId())가 이 문서를
+ * 참조하므로 항상 맨 마지막에 지운다.
  */
 export async function deleteAccountData(uid, shareId) {
   await deleteQueryResults(query(collection(db, "transactions"), where("userId", "==", uid)));
   await deleteQueryResults(query(collection(db, "recurringPayments"), where("userId", "==", uid)));
   await deleteQueryResults(query(collection(db, "installments"), where("userId", "==", uid)));
+  await deleteQueryResults(query(collection(db, "sharedTransactions"), where("userId", "==", uid)));
 
   if (shareId === uid) {
     await deleteQueryResults(query(collection(db, "categories"), where("shareId", "==", uid)));
