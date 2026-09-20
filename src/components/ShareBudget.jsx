@@ -44,7 +44,7 @@ export default function ShareBudget({ user, profile }) {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(myCode);
-      showToast("커플 코드를 복사했어요!");
+      showToast("공유 코드를 복사했어요!");
     } catch {
       showToast("복사가 막혔어요. 코드를 직접 선택해서 복사해줘!");
     }
@@ -146,7 +146,7 @@ export default function ShareBudget({ user, profile }) {
 
       <section className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3">
         <h2 className="text-sm font-bold text-slate-700 flex items-center gap-1">
-          <Users className="w-4 h-4" /> 내 커플 코드
+          <Users className="w-4 h-4" /> 내 공유 코드
         </h2>
         <p className="text-xs text-slate-400">
           이 코드를 커플/가족에게 알려주면 공유 가계부를 함께 쓸 수 있어요.
@@ -166,12 +166,12 @@ export default function ShareBudget({ user, profile }) {
 
       {!isLinked ? (
         <section className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3">
-          <h2 className="text-sm font-bold text-slate-700">커플 코드로 연동하기</h2>
+          <h2 className="text-sm font-bold text-slate-700">공유 코드로 연동하기</h2>
           <div className="flex gap-2">
             <input
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="상대방 커플 코드 입력"
+              placeholder="상대방 공유 코드 입력"
               className="flex-1 min-w-0 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
             />
             <button

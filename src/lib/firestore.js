@@ -285,10 +285,10 @@ export async function leaveShare(uid) {
 
 export async function joinCouple(uid, coupleCode) {
   const code = coupleCode.trim();
-  if (!code) throw new Error("커플 코드를 입력해주세요.");
+  if (!code) throw new Error("공유 코드를 입력해주세요.");
   if (code === uid) throw new Error("본인 코드는 입력할 수 없어요.");
   const targetSnap = await getDoc(doc(db, "users", code));
-  if (!targetSnap.exists()) throw new Error("존재하지 않는 커플 코드예요.");
+  if (!targetSnap.exists()) throw new Error("존재하지 않는 공유 코드예요.");
   await updateDoc(doc(db, "users", uid), { coupleId: code });
   return code;
 }
