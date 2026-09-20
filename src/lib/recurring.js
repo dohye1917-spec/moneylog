@@ -17,6 +17,19 @@ export function previousYearMonth(yearMonth) {
 }
 
 /**
+ * year년 month월(1~12)의 마지막 날짜를 반환한다. 29~31일을 등록할 수 있게 되면서
+ * 2월이나 30일까지밖에 없는 달에서는 실제 존재하는 마지막 날로 당겨써야 한다
+ * (그렇지 않으면 Date가 다음 달로 그냥 넘어가버려 엉뚱한 달에 기록됨).
+ */
+export function lastDayOfMonth(year, month) {
+  return new Date(year, month, 0).getDate();
+}
+
+function clampDayOfMonth(year, month, dayOfMonth) {
+  return Math.min(dayOfMonth, lastDayOfMonth(year, month));
+}
+
+/**
  * fromYearMonth(제외) 다음 달부터 오늘이 속한 달(포함)까지,
  * dayOfMonth가 이미 지난 달들을 { yearMonth, targetDate } 배열로 반환한다.
  */
@@ -27,9 +40,10 @@ export function computeMissedOccurrences(dayOfMonth, fromYearMonth, today = new 
 
   while (cursor <= currentYM) {
     const [y, m] = cursor.split("-").map(Number);
-    const targetDate = new Date(y, m - 1, dayOfMonth);
+    const clampedDay = clampDayOfMonth(y, m, dayOfMonth);
+    const targetDate = new Date(y, m - 1, clampedDay);
     const isCurrentMonth = cursor === currentYM;
-    const dayHasPassed = !isCurrentMonth || today.getDate() >= dayOfMonth;
+    const dayHasPassed = !isCurrentMonth || today.getDate() >= clampedDay;
     if (dayHasPassed) occurrences.push({ yearMonth: cursor, targetDate });
     cursor = nextYearMonth(cursor);
   }

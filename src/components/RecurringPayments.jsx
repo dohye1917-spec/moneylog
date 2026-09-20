@@ -5,12 +5,20 @@ import {
   deleteRecurringPayment,
   getRealtimeRecurringPayments,
 } from "../lib/firestore";
+import { lastDayOfMonth } from "../lib/recurring";
 import InstallmentSection from "./InstallmentSection";
 
+// 29~31일처럼 모든 달에 존재하지 않는 날짜는 그 달의 마지막 날로 당겨서 계산한다.
 function daysUntilNext(dayOfMonth) {
   const today = new Date();
-  const thisMonth = new Date(today.getFullYear(), today.getMonth(), dayOfMonth);
-  const target = thisMonth >= today ? thisMonth : new Date(today.getFullYear(), today.getMonth() + 1, dayOfMonth);
+  const thisMonthDay = Math.min(dayOfMonth, lastDayOfMonth(today.getFullYear(), today.getMonth() + 1));
+  const thisMonth = new Date(today.getFullYear(), today.getMonth(), thisMonthDay);
+  if (thisMonth >= today) return Math.ceil((thisMonth - today) / (1000 * 60 * 60 * 24));
+
+  const nextY = today.getMonth() === 11 ? today.getFullYear() + 1 : today.getFullYear();
+  const nextM = today.getMonth() === 11 ? 1 : today.getMonth() + 2;
+  const nextMonthDay = Math.min(dayOfMonth, lastDayOfMonth(nextY, nextM));
+  const target = new Date(nextY, nextM - 1, nextMonthDay);
   return Math.ceil((target - today) / (1000 * 60 * 60 * 24));
 }
 
@@ -95,7 +103,7 @@ export default function RecurringPayments({ shareId }) {
               onChange={(e) => setDayOfMonth(e.target.value)}
               className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
             >
-              {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+              {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
                 <option key={d} value={d}>
                   매월 {d}일
                 </option>

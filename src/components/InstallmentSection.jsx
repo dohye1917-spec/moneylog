@@ -87,7 +87,7 @@ export default function InstallmentSection({ userId, shareId }) {
             onChange={(e) => setDayOfMonth(e.target.value)}
             className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
           >
-            {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
+            {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
               <option key={d} value={d}>
                 매월 {d}일
               </option>

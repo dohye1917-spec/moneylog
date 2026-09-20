@@ -11,7 +11,14 @@ import { deleteProfilePhoto } from "./storage";
  */
 export async function deleteAccount(uid, shareId) {
   await deleteAccountData(uid, shareId);
-  await deleteProfilePhoto(uid);
+
+  // 프로필 사진 정리는 부수적인 정리 작업이라, Storage가 아직 활성화되지 않았거나
+  // 다른 이유로 실패해도 계정 삭제 자체(진짜 중요한 부분)는 막지 않는다.
+  try {
+    await deleteProfilePhoto(uid);
+  } catch (err) {
+    console.error("프로필 사진 정리 실패 (탈퇴는 계속 진행):", err);
+  }
 
   try {
     await deleteUser(auth.currentUser);
