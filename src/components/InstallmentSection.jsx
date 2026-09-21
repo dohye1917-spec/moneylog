@@ -7,6 +7,12 @@ import {
 } from "../lib/firestore";
 import { getInstallmentStatusForMonth, toYearMonth } from "../lib/installments";
 
+function formatRegisteredDate(timestamp) {
+  const d = timestamp?.toDate?.();
+  if (!d) return "";
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")} 등록`;
+}
+
 export default function InstallmentSection({ userId, shareId }) {
   const [items, setItems] = useState([]);
   const [name, setName] = useState("");
@@ -119,8 +125,8 @@ export default function InstallmentSection({ userId, shareId }) {
                       ? `${status.round}/${status.totalRounds}회차${item.dayOfMonth ? ` · 매월 ${item.dayOfMonth}일` : ""} · ${status.amount.toLocaleString("ko-KR")}원`
                       : `총 ${Number(item.totalAmount).toLocaleString("ko-KR")}원 · ${item.months}개월${item.dayOfMonth ? ` · 매월 ${item.dayOfMonth}일` : ""} (이번 달 해당 없음)`}
                   </p>
-                  {item.startYearMonth && (
-                    <p className="text-[11px] text-slate-300 mt-0.5">{item.startYearMonth} 시작</p>
+                  {formatRegisteredDate(item.createdAt) && (
+                    <p className="text-[11px] text-slate-300 mt-0.5">{formatRegisteredDate(item.createdAt)}</p>
                   )}
                 </div>
               </div>
