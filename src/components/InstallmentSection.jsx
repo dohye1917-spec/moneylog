@@ -125,12 +125,8 @@ export default function InstallmentSection({ userId, shareId }) {
                       ? `${status.round}/${status.totalRounds}회차${item.dayOfMonth ? ` · 매월 ${item.dayOfMonth}일` : ""} · ${status.amount.toLocaleString("ko-KR")}원`
                       : `총 ${Number(item.totalAmount).toLocaleString("ko-KR")}원 · ${item.months}개월${item.dayOfMonth ? ` · 매월 ${item.dayOfMonth}일` : ""} (이번 달 해당 없음)`}
                   </p>
-                  {(item.startYearMonth || formatRegisteredDate(item.createdAt)) && (
-                    <p className="text-[11px] text-slate-300 mt-0.5">
-                      {item.startYearMonth && `${item.startYearMonth} 시작`}
-                      {item.startYearMonth && formatRegisteredDate(item.createdAt) && " · "}
-                      {formatRegisteredDate(item.createdAt)}
-                    </p>
+                  {formatRegisteredDate(item.createdAt) && (
+                    <p className="text-[11px] text-slate-300 mt-0.5">{formatRegisteredDate(item.createdAt)}</p>
                   )}
                 </div>
               </div>
