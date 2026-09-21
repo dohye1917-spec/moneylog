@@ -17,6 +17,7 @@ import TransactionList from "./components/TransactionList";
 import StatsChart from "./components/StatsChart";
 import RecurringPayments from "./components/RecurringPayments";
 import ShareBudget from "./components/ShareBudget";
+import NotesScreen from "./components/NotesScreen";
 import SettingsScreen from "./components/SettingsScreen";
 import BottomNav from "./components/BottomNav";
 
@@ -213,6 +214,7 @@ export default function App() {
         )}
         {tab === "recurring" && <RecurringPayments shareId={shareId} />}
         {tab === "share" && <ShareBudget user={user} profile={profile} />}
+        {tab === "notes" && <NotesScreen shareId={shareId} />}
         {tab === "settings" && (
           <SettingsScreen user={user} profile={profile} onSignOut={signOut} />
         )}

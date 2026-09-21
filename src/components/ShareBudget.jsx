@@ -8,8 +8,9 @@ import {
   addSharedTransaction,
   deleteSharedTransaction,
   getRealtimeSharedTransactions,
+  getRealtimeUserProfile,
 } from "../lib/firestore";
-import { DEFAULT_CATEGORIES } from "../lib/categories";
+import { DEFAULT_CATEGORIES, INCOME_CATEGORIES } from "../lib/categories";
 import CategoryGrid from "./CategoryGrid";
 import NumberPad from "./NumberPad";
 import TransactionList from "./TransactionList";
@@ -21,8 +22,10 @@ export default function ShareBudget({ user, profile }) {
   const [toast, setToast] = useState("");
   const [busy, setBusy] = useState(false);
   const [amount, setAmount] = useState("");
+  const [type, setType] = useState("expense");
   const [shake, setShake] = useState(false);
   const [sharedTx, setSharedTx] = useState([]);
+  const [partnerProfile, setPartnerProfile] = useState(null);
 
   const myCode = user?.uid || "";
   const coupleId = profile?.coupleId || user?.uid;
@@ -33,7 +36,18 @@ export default function ShareBudget({ user, profile }) {
 
   useEffect(() => {
     if (!isLinked) return;
-    return getRealtimeSharedTransactions(coupleId, setSharedTx);
+    return getRealtimeSharedTransactions(coupleId, setSharedTx, (err) => {
+      console.error(err);
+      showToast("최근 내역을 불러오지 못했어요. 새로고침해줘.");
+    });
+  }, [isLinked, coupleId]);
+
+  useEffect(() => {
+    if (!isLinked) {
+      setPartnerProfile(null);
+      return;
+    }
+    return getRealtimeUserProfile(coupleId, setPartnerProfile);
   }, [isLinked, coupleId]);
 
   const showToast = (msg) => {
@@ -95,6 +109,12 @@ export default function ShareBudget({ user, profile }) {
     });
   };
 
+  // 3x4 숫자판 탭 입력과 실제 키보드 타이핑(위 input)이 같은 amount 상태를 공유한다.
+  const handleAmountChange = (e) => {
+    const digits = e.target.value.replace(/[^0-9]/g, "").slice(0, MAX_AMOUNT_DIGITS);
+    setAmount(digits.replace(/^0+(?=\d)/, ""));
+  };
+
   const handleSelectCategory = async (category) => {
     const value = Number(amount);
     if (!value) {
@@ -109,13 +129,15 @@ export default function ShareBudget({ user, profile }) {
         userId: user.uid,
         coupleId,
         amount: value,
+        type,
         category: category.name,
         emoji: category.emoji,
         color: category.color,
         date: new Date(),
       });
       setAmount("");
-      showToast(`${category.emoji} ${category.name} · ${value.toLocaleString("ko-KR")}원 기록완료!`);
+      const sign = type === "income" ? "+" : "-";
+      showToast(`${category.emoji} ${category.name} · ${sign}${value.toLocaleString("ko-KR")}원 기록완료!`);
     } catch (err) {
       console.error(err);
       showToast("저장에 실패했어요. 다시 시도해줘.");
@@ -189,9 +211,29 @@ export default function ShareBudget({ user, profile }) {
         </section>
       ) : (
         <>
+          <section className="bg-white rounded-2xl border border-slate-200 p-5">
+            <div className="flex items-center gap-3">
+              <div className="relative w-11 h-11 rounded-full overflow-hidden bg-slate-200 shrink-0">
+                {partnerProfile?.photoURL && (
+                  <img
+                    src={partnerProfile.photoURL}
+                    alt={partnerProfile.displayName || "상대방"}
+                    className="w-full h-full object-cover"
+                  />
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-slate-700 truncate">
+                  {partnerProfile?.displayName || "상대방"}
+                </p>
+                <p className="text-xs text-slate-400 truncate">{partnerProfile?.email || "함께 공유 가계부를 쓰고 있어요"}</p>
+              </div>
+            </div>
+          </section>
+
           <section className={`bg-white rounded-2xl border border-slate-200 p-5 space-y-4 ${shake ? "animate-pulse" : ""}`}>
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-slate-700">같이 쓰는 지출 추가</h2>
+              <h2 className="text-sm font-bold text-slate-700">같이 쓰는 내역 추가</h2>
               <button
                 onClick={handleLeaveCouple}
                 disabled={busy}
@@ -201,11 +243,43 @@ export default function ShareBudget({ user, profile }) {
               </button>
             </div>
 
+            <div className="flex items-center justify-center gap-1">
+              <button
+                onClick={() => setType("expense")}
+                className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
+                  type === "expense" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-400"
+                }`}
+              >
+                지출
+              </button>
+              <button
+                onClick={() => setType("income")}
+                className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
+                  type === "income" ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-400"
+                }`}
+              >
+                입금
+              </button>
+            </div>
+
             <div className="text-center py-2">
               <div className="flex items-center justify-center gap-1">
-                <span className="text-4xl font-bold text-slate-800 tabular-nums">
-                  {amount ? Number(amount).toLocaleString("ko-KR") : "0"}
-                </span>
+                {amount && (
+                  <span className={`text-4xl font-bold ${type === "income" ? "text-emerald-500" : "text-slate-800"}`}>
+                    {type === "income" ? "+" : "-"}
+                  </span>
+                )}
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={amount ? Number(amount).toLocaleString("ko-KR") : ""}
+                  onChange={handleAmountChange}
+                  placeholder="0"
+                  className={`text-4xl font-bold tabular-nums text-center bg-transparent focus:outline-none min-w-[1.5ch] ${
+                    type === "income" ? "text-emerald-500" : "text-slate-800"
+                  }`}
+                  style={{ width: `${(amount ? Number(amount).toLocaleString("ko-KR").length : 1) + 1}ch` }}
+                />
                 <span className="text-xl text-slate-400">원</span>
               </div>
             </div>
@@ -213,7 +287,7 @@ export default function ShareBudget({ user, profile }) {
             <NumberPad onKeyPress={handleKeyPress} />
 
             <CategoryGrid
-              categories={DEFAULT_CATEGORIES}
+              categories={type === "income" ? INCOME_CATEGORIES : DEFAULT_CATEGORIES}
               onSelect={handleSelectCategory}
               onAddCategory={() => showToast("공유 가계부는 기본 카테고리만 사용할 수 있어요.")}
             />

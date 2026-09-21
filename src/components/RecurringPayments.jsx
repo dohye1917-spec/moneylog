@@ -8,6 +8,12 @@ import {
 import { lastDayOfMonth } from "../lib/recurring";
 import InstallmentSection from "./InstallmentSection";
 
+function formatRegisteredDate(timestamp) {
+  const d = timestamp?.toDate?.();
+  if (!d) return "";
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")} 등록`;
+}
+
 // 29~31일처럼 모든 달에 존재하지 않는 날짜는 그 달의 마지막 날로 당겨서 계산한다.
 function daysUntilNext(dayOfMonth) {
   const today = new Date();
@@ -129,6 +135,9 @@ export default function RecurringPayments({ shareId }) {
                 <div>
                   <p className="text-sm font-semibold text-slate-700">{i.name}</p>
                   <p className="text-xs text-slate-400">매월 {i.dayOfMonth}일 · {Number(i.amount).toLocaleString("ko-KR")}원</p>
+                  {formatRegisteredDate(i.createdAt) && (
+                    <p className="text-[11px] text-slate-300 mt-0.5">{formatRegisteredDate(i.createdAt)}</p>
+                  )}
                 </div>
               </div>
               <button
