@@ -1,6 +1,12 @@
 // 통계 대시보드에서 공용으로 쓰는 순수 집계 함수.
 // 할부(virtualInstallments)는 이번 달 실제 지출이므로 카테고리 합계/총합에는
 // 포함하지만, 요일이 없는 항목이라 주간 버킷(bucketByWeek)에는 포함하지 않는다.
+// 입금(income) 내역은 지출 통계가 아니므로 여기서는 전부 제외한다
+// (옛 데이터는 type 필드가 없어서 없으면 지출로 취급한다).
+
+function isExpense(t) {
+  return t.type !== "income";
+}
 
 export function aggregateByCategory(transactions, virtualInstallments = []) {
   const map = new Map();
@@ -10,13 +16,13 @@ export function aggregateByCategory(transactions, virtualInstallments = []) {
     prev.amount += Number(t.amount) || 0;
     map.set(key, prev);
   };
-  transactions.forEach(addRow);
+  transactions.filter(isExpense).forEach(addRow);
   virtualInstallments.forEach(addRow);
   return Array.from(map.values()).sort((a, b) => b.amount - a.amount);
 }
 
 export function monthlyTotal(transactions, virtualInstallments = []) {
-  const txTotal = transactions.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+  const txTotal = transactions.filter(isExpense).reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
   const instTotal = virtualInstallments.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
   return txTotal + instTotal;
 }
@@ -34,7 +40,7 @@ export function filterByYearMonth(transactions, yearMonth) {
 // 이미 한 달로 필터링된 transactions를 주차(1~5주차)별로 나눠 합산한다.
 export function bucketByWeek(transactions) {
   const buckets = [0, 0, 0, 0, 0];
-  for (const t of transactions) {
+  for (const t of transactions.filter(isExpense)) {
     const d = t.date?.toDate?.();
     if (!d) continue;
     const weekIndex = Math.min(4, Math.floor((d.getDate() - 1) / 7));

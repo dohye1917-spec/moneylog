@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ClipboardPaste, X } from "lucide-react";
-import { DEFAULT_CATEGORIES } from "../lib/categories";
+import { DEFAULT_CATEGORIES, INCOME_CATEGORIES } from "../lib/categories";
 import { addTransaction, addCustomCategory } from "../lib/firestore";
 import CategoryGrid from "./CategoryGrid";
 import NumberPad from "./NumberPad";
@@ -17,6 +17,7 @@ function formatPendingDate(date) {
 
 export default function AddScreen({ user, profile, customCategories, onSaved }) {
   const [amount, setAmount] = useState("");
+  const [type, setType] = useState("expense");
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showPremium, setShowPremium] = useState(false);
   const [showSmsParse, setShowSmsParse] = useState(false);
@@ -27,7 +28,7 @@ export default function AddScreen({ user, profile, customCategories, onSaved }) 
 
   const isPremium = !!profile?.isPremium;
   const shareId = profile?.shareId || user?.uid;
-  const categories = [...DEFAULT_CATEGORIES, ...customCategories];
+  const categories = type === "income" ? INCOME_CATEGORIES : [...DEFAULT_CATEGORIES, ...customCategories];
 
   const showToast = (msg) => {
     setToast(msg);
@@ -67,6 +68,7 @@ export default function AddScreen({ user, profile, customCategories, onSaved }) 
         userId: user.uid,
         shareId,
         amount: value,
+        type,
         category: category.name,
         emoji: category.emoji,
         color: category.color,
@@ -76,7 +78,8 @@ export default function AddScreen({ user, profile, customCategories, onSaved }) 
       setAmount("");
       setPendingDate(null);
       setPendingMemo("");
-      showToast(`${category.emoji} ${category.name} · ${value.toLocaleString("ko-KR")}원 기록완료!`);
+      const sign = type === "income" ? "+" : "-";
+      showToast(`${category.emoji} ${category.name} · ${sign}${value.toLocaleString("ko-KR")}원 기록완료!`);
       onSaved?.();
     } catch (err) {
       console.error(err);
@@ -86,6 +89,7 @@ export default function AddScreen({ user, profile, customCategories, onSaved }) 
 
   const handleSmsParsed = ({ amount: parsedAmount, date, memo }) => {
     setAmount(String(parsedAmount));
+    setType("expense");
     setPendingDate(date);
     setPendingMemo(memo);
   };
@@ -96,6 +100,10 @@ export default function AddScreen({ user, profile, customCategories, onSaved }) 
   };
 
   const handleAddCategoryClick = () => {
+    if (type === "income") {
+      showToast("입금 카테고리는 추가할 수 없어요.");
+      return;
+    }
     if (!isPremium) {
       setShowPremium(true);
       return;
@@ -112,8 +120,26 @@ export default function AddScreen({ user, profile, customCategories, onSaved }) 
   return (
     <div className="space-y-5">
       <div className={`text-center py-4 ${shake ? "animate-pulse" : ""}`}>
+        <div className="flex items-center justify-center gap-1 mb-2">
+          <button
+            onClick={() => setType("expense")}
+            className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
+              type === "expense" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-400"
+            }`}
+          >
+            지출
+          </button>
+          <button
+            onClick={() => setType("income")}
+            className={`rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
+              type === "income" ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-400"
+            }`}
+          >
+            입금
+          </button>
+        </div>
         <div className="flex items-center justify-center gap-1.5 mb-1">
-          <p className="text-sm text-slate-400">오늘 얼마 썼어?</p>
+          <p className="text-sm text-slate-400">{type === "income" ? "얼마 들어왔어?" : "오늘 얼마 썼어?"}</p>
           <button
             onClick={() => setShowSmsParse(true)}
             className="text-slate-300 hover:text-slate-500"
@@ -123,6 +149,11 @@ export default function AddScreen({ user, profile, customCategories, onSaved }) 
           </button>
         </div>
         <div className="flex items-center justify-center gap-1">
+          {amount && (
+            <span className={`text-4xl font-bold ${type === "income" ? "text-emerald-500" : "text-slate-800"}`}>
+              {type === "income" ? "+" : "-"}
+            </span>
+          )}
           <input
             type="text"
             inputMode="numeric"
@@ -130,7 +161,9 @@ export default function AddScreen({ user, profile, customCategories, onSaved }) 
             value={amount ? Number(amount).toLocaleString("ko-KR") : ""}
             onChange={handleAmountChange}
             placeholder="0"
-            className="text-4xl font-bold text-slate-800 tabular-nums text-center bg-transparent focus:outline-none min-w-[1.5ch]"
+            className={`text-4xl font-bold tabular-nums text-center bg-transparent focus:outline-none min-w-[1.5ch] ${
+              type === "income" ? "text-emerald-500" : "text-slate-800"
+            }`}
             style={{ width: `${(amount ? Number(amount).toLocaleString("ko-KR").length : 1) + 1}ch` }}
           />
           <span className="text-xl text-slate-400">원</span>

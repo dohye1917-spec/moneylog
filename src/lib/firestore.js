@@ -24,14 +24,16 @@ const BATCH_CHUNK_SIZE = 450; // Firestore 배치는 최대 500개 쓰기까지 
 // ---------------------------------------------------------------------------
 
 /**
- * 새로운 지출 내역을 Firestore에 신규 등록한다.
- * data: { userId, shareId, amount, category, emoji, color, date, memo }
+ * 새로운 지출/입금 내역을 Firestore에 신규 등록한다.
+ * data: { userId, shareId, amount, category, emoji, color, date, memo, type }
+ * type은 "expense"(지출, 기본값) 또는 "income"(입금)이다.
  */
 export async function addTransaction(data) {
   const ref = await addDoc(collection(db, "transactions"), {
     userId: data.userId,
     shareId: data.shareId,
     amount: Number(data.amount) || 0,
+    type: data.type === "income" ? "income" : "expense",
     category: data.category,
     emoji: data.emoji || "🧾",
     color: data.color || "#F0F0F0",
@@ -302,6 +304,7 @@ export async function addSharedTransaction(data) {
     userId: data.userId,
     coupleId: data.coupleId,
     amount: Number(data.amount) || 0,
+    type: data.type === "income" ? "income" : "expense",
     category: data.category,
     emoji: data.emoji || "🧾",
     color: data.color || "#F0F0F0",
@@ -316,16 +319,52 @@ export async function deleteSharedTransaction(id) {
   await deleteDoc(doc(db, "sharedTransactions", id));
 }
 
+/**
+ * orderBy(date)를 쓰면 coupleId+date 복합 인덱스가 미리 만들어져 있어야 해서,
+ * 인덱스가 없는 상태로 연동하면 onSnapshot이 콘솔에만 에러를 남기고 목록이
+ * 계속 비어있는 것처럼 보인다. 복합 인덱스 없이도 동작하도록 단일 필드
+ * where만 쓰고, 정렬은 받아온 뒤 클라이언트에서 처리한다.
+ */
 export function getRealtimeSharedTransactions(coupleId, callback, onError) {
-  const q = query(
-    collection(db, "sharedTransactions"),
-    where("coupleId", "==", coupleId),
-    orderBy("date", "desc")
-  );
+  const q = query(collection(db, "sharedTransactions"), where("coupleId", "==", coupleId));
   return onSnapshot(
     q,
     (snapshot) => {
-      const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const list = snapshot.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (b.date?.toMillis?.() || 0) - (a.date?.toMillis?.() || 0));
+      callback(list);
+    },
+    onError
+  );
+}
+
+// ---------------------------------------------------------------------------
+// notes (여행 계획 등 돈과 상관없는 자유 메모) - shareId로 스코프됨
+// ---------------------------------------------------------------------------
+
+export async function addNote(shareId, text) {
+  const ref = await addDoc(collection(db, "notes"), {
+    shareId,
+    text,
+    createdAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function deleteNote(id) {
+  await deleteDoc(doc(db, "notes", id));
+}
+
+// sharedTransactions와 같은 이유로 복합 인덱스 없이 동작하도록 정렬은 클라이언트에서 처리한다.
+export function getRealtimeNotes(shareId, callback, onError) {
+  const q = query(collection(db, "notes"), where("shareId", "==", shareId));
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const list = snapshot.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
       callback(list);
     },
     onError
@@ -362,6 +401,7 @@ export async function deleteAccountData(uid, shareId) {
   await deleteQueryResults(query(collection(db, "sharedTransactions"), where("userId", "==", uid)));
 
   if (shareId === uid) {
+    await deleteQueryResults(query(collection(db, "notes"), where("shareId", "==", uid)));
     await deleteQueryResults(query(collection(db, "categories"), where("shareId", "==", uid)));
     await deleteDoc(doc(db, "budgets", uid));
   }

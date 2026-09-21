@@ -64,6 +64,13 @@ service cloud.firestore {
       allow write: if isSignedIn() && shareId == myShareId();
     }
 
+    // notes: 여행 계획 등 돈과 상관없는 자유 메모. transactions와 동일하게 shareId로 스코프.
+    match /notes/{id} {
+      allow read: if isSignedIn() && resource.data.shareId == myShareId();
+      allow create: if isSignedIn() && request.resource.data.shareId == myShareId();
+      allow update, delete: if isSignedIn() && resource.data.shareId == myShareId();
+    }
+
     // sharedTransactions: 개인 가계부(shareId)와 완전히 별개인 공유 가계부.
     // coupleId(연동한 두 사람만 공유)로 스코프한다.
     match /sharedTransactions/{id} {

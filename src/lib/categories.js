@@ -12,6 +12,14 @@ export const DEFAULT_CATEGORIES = [
   { id: "etc", name: "기타", emoji: "🧾", color: "#F0F0F0" },
 ];
 
+// 입금(수입) 전용 카테고리 — 지출 카테고리와는 별도로 관리한다.
+export const INCOME_CATEGORIES = [
+  { id: "salary", name: "급여", emoji: "💰", color: "#CFF5E7" },
+  { id: "allowance", name: "용돈", emoji: "🎁", color: "#FFD9E8" },
+  { id: "sidejob", name: "부수입", emoji: "💼", color: "#CDE8FF" },
+  { id: "income-etc", name: "기타", emoji: "🧾", color: "#F0F0F0" },
+];
+
 // 커스텀 카테고리 생성 시 고를 수 있는 파스텔 팔레트
 export const PASTEL_PALETTE = [
   "#FFD9E8",

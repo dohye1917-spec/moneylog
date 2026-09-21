@@ -9,8 +9,13 @@ function formatDateLabel(ts) {
 }
 
 export default function TransactionList({ transactions, onDelete = deleteTransaction }) {
+  // 옛 데이터는 type 필드가 없어서 없으면 지출(expense)로 취급한다.
   const monthTotal = useMemo(
-    () => transactions.reduce((sum, t) => sum + (Number(t.amount) || 0), 0),
+    () =>
+      transactions.reduce((sum, t) => {
+        const amount = Number(t.amount) || 0;
+        return sum + (t.type === "income" ? amount : -amount);
+      }, 0),
     [transactions]
   );
 
@@ -58,7 +63,8 @@ export default function TransactionList({ transactions, onDelete = deleteTransac
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <span className="text-sm font-bold text-slate-800">
+                <span className={`text-sm font-bold ${t.type === "income" ? "text-emerald-500" : "text-slate-800"}`}>
+                  {t.type === "income" ? "+" : "-"}
                   {Number(t.amount).toLocaleString("ko-KR")}원
                 </span>
                 <button
